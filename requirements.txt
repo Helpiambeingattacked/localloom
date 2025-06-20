@@ -1,0 +1,4 @@
+Tkinter
+geopy
+Pillow
+simplejson
