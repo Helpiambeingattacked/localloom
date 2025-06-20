@@ -30,5 +30,18 @@
     "media": [],
     "time": "2025-06-20T16:31:08",
     "privacy": "public"
+  },
+  {
+    "lat": 36.14545569435277,
+    "lon": 128.14505356834832,
+    "description": "add media",
+    "media": [
+      "C:/Users/yerik/Downloads/ThinkstockPhotos-72967326.jpg",
+      "C:/Users/yerik/Downloads/grandma-holding-pizza-teglia-and-cup-of-coffee-vector-55330884.jpg",
+      "C:/Users/yerik/Downloads/pngtree-the-famous-old-lady-coloring-pages-vector-png-image_6780352.png",
+      "C:/Users/yerik/Downloads/png (1).png"
+    ],
+    "time": "2025-06-20T16:34:46",
+    "privacy": "public"
   }
 ]
