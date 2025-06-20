@@ -1,4 +1,5 @@
 from tkinter import *
+from tkinter import filedialog, messagebox
 from tkintermapview import TkinterMapView
 import os, json, datetime, threading, time
 
@@ -22,63 +23,67 @@ class MainPage(Frame):
         self.master = master
         self.pack(fill=BOTH, expand=True)
         self.pins = [p for p in load_pins() if "lat" in p and "lon" in p]
+        self.last_pins = list(self.pins)
         self.add_pin_mode = False
-        self.dot_ids = []
+        self.filter_text = StringVar()
+        self.filtered_pins = self.pins.copy()
+        self.markers = []
         self.init_ui()
 
     def init_ui(self):
-        # Sidebar (same as before)
+        # Sidebar
         left_panel = Frame(self, width=300, bg="#f0f0f0")
         left_panel.pack(side=LEFT, fill=Y)
         left_panel.pack_propagate(False)
+
         Button(left_panel, text="Add Pin", command=self.enable_pin_mode).pack(pady=10, padx=10)
+        Button(left_panel, text="Refresh", command=self.refresh_pins).pack(pady=5, padx=10)
+
+        Label(left_panel, text="Filter by keyword:").pack(pady=5)
+        Entry(left_panel, textvariable=self.filter_text).pack(pady=2, padx=10)
+        Button(left_panel, text="Apply Filter", command=self.apply_filter).pack(pady=2, padx=10)
+
+        Label(left_panel, text="Memories:").pack(pady=5)
+        self.memories_listbox = Listbox(left_panel, width=40)
+        self.memories_listbox.pack(padx=10, pady=2, fill=Y, expand=True)
+        self.memories_listbox.bind("<<ListboxSelect>>", self.on_memory_select)
+        self.update_memories_listbox()
 
         # Map widget
-        map_frame = Frame(self)
-        map_frame.pack(side=LEFT, fill=BOTH, expand=True)
-        self.map_widget = TkinterMapView(map_frame, width=800, height=600, corner_radius=0)
-        self.map_widget.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.map_widget = TkinterMapView(self, width=800, height=600, corner_radius=0)
+        self.map_widget.pack(side=LEFT, fill=BOTH, expand=True)
         self.map_widget.set_position(37.7749, -122.4194)
         self.map_widget.set_zoom(10)
+        self.map_widget.add_left_click_map_command(self.on_map_click)
 
-        # Transparent overlay canvas
-        self.overlay = Canvas(map_frame, bg='', highlightthickness=0)
-        self.overlay.place(relx=0, rely=0, relwidth=1, relheight=1)
-        self.overlay.bind("<Button-1>", self.on_overlay_click)
-
-        # Redraw pins when map moves/zooms/resizes
-        self.map_widget.canvas.bind("<Configure>", lambda e: self.redraw_overlay())
-        self.map_widget.add_position_changed_event(self.redraw_overlay)
-        self.map_widget.add_zoom_changed_event(self.redraw_overlay)
-
-        self.redraw_overlay()
+        self.refresh_markers()
 
     def enable_pin_mode(self):
         self.add_pin_mode = True
+        # Optionally show a message to user
 
-    def on_overlay_click(self, event):
-        # Convert overlay click to map coordinates
-        lat, lon = self.map_widget.convert_canvas_xy_to_coordinates(event.x, event.y)
-        # Check if clicked on a pin
-        for idx, pin in enumerate(self.pins):
-            px, py = self.map_widget.convert_coordinates_to_canvas_xy(pin["lat"], pin["lon"])
-            if (event.x - px) ** 2 + (event.y - py) ** 2 < 12 ** 2:
-                self.open_pin_view(pin)
-                return
-        # If in add mode, add pin
+    def on_map_click(self, coords):
         if self.add_pin_mode:
+            lat, lon = coords
             self.open_pin_form(lat, lon)
             self.add_pin_mode = False
 
-    def redraw_overlay(self, *args):
-        self.overlay.delete("all")
-        dot_radius = 12
-        for pin in self.pins:
-            x, y = self.map_widget.convert_coordinates_to_canvas_xy(pin["lat"], pin["lon"])
-            self.overlay.create_oval(
-                x - dot_radius, y - dot_radius, x + dot_radius, y + dot_radius,
-                fill="red", outline="black", width=2
+    def refresh_markers(self):
+        # Remove old markers
+        for m in self.markers:
+            m.delete()
+        self.markers = []
+        for pin in self.filtered_pins:
+            marker = self.map_widget.set_marker(
+                pin["lat"], pin["lon"],
+                text=pin.get("description", "")[:20] or "Memory"
             )
+            marker.data = pin
+            # Use a function that takes marker as argument
+            def marker_command(m, self=self):
+                self.open_pin_view(m.data)
+            marker.command = marker_command
+            self.markers.append(marker)
 
     def open_pin_form(self, lat, lon):
         win = Toplevel(self)
@@ -92,30 +97,43 @@ class MainPage(Frame):
         desc_text = Text(win, height=4, width=40)
         desc_text.pack()
         media_var = StringVar()
+        media_files = []
+
         def upload_file():
-            path = filedialog.askopenfilename()
-            if path:
-                media_var.set(path)
+            try:
+                paths = filedialog.askopenfilenames(
+                    title="Select media files",
+                    filetypes=[("Media files", "*.jpg *.png *.mp4 *.avi *.mov *.mp3 *.wav"), ("All files", "*.*")]
+                )
+                if paths:
+                    media_files.clear()
+                    media_files.extend(paths)
+                    media_var.set("; ".join(os.path.basename(p) for p in media_files))
+            except Exception as e:
+                messagebox.showerror("Error", f"File selection failed: {e}")
+
         Button(win, text="Upload", command=upload_file).pack()
-        media_label = Label(win, textvariable=media_var)
+        media_label = Label(win, textvariable=media_var, wraplength=300, justify=LEFT)
         media_label.pack()
         time_var = StringVar(value=datetime.datetime.now().isoformat(timespec="seconds"))
         Entry(win, textvariable=time_var).pack()
         privacy_var = BooleanVar(value=True)
         Checkbutton(win, text="Public", variable=privacy_var).pack()
+
         def save_pin():
             pin = {
                 "lat": lat,
                 "lon": lon,
                 "description": desc_text.get("1.0", "end").strip(),
-                "media": media_var.get(),
+                "media": list(media_files),  # Save as list of paths
                 "time": time_var.get(),
                 "privacy": "public" if privacy_var.get() else "private"
             }
             self.pins.append(pin)
             save_pins(self.pins)
             win.destroy()
-            self.redraw_overlay()
+            self.apply_filter()
+            self.refresh_markers()
         Button(win, text="Save", command=save_pin).pack(pady=10)
 
     def open_pin_view(self, pin):
@@ -129,13 +147,78 @@ class MainPage(Frame):
         desc.insert("1.0", pin.get("description", ""))
         desc.config(state="disabled")
         desc.pack()
+        # Show media files as a list of buttons
         if pin.get("media"):
-            def open_media():
-                try:
-                    os.startfile(pin["media"])
-                except Exception as e:
-                    messagebox.showerror("Error", f"Could not open file: {e}")
-            Button(win, text="Open Media", command=open_media).pack(pady=5)
+            media_files = pin["media"] if isinstance(pin["media"], list) else [pin["media"]]
+            if media_files:
+                Label(win, text="Media files:").pack()
+                for path in media_files:
+                    fname = os.path.basename(path)
+                    def open_media(p=path):
+                        try:
+                            os.startfile(p)
+                        except Exception as e:
+                            messagebox.showerror("Error", f"Could not open file: {e}")
+                    Button(win, text=fname, command=open_media).pack(anchor="w", padx=10)
+
+    def update_memories_listbox(self):
+        self.memories_listbox.delete(0, END)
+        for idx, pin in enumerate(self.filtered_pins):
+            desc = pin.get("description", "")
+            time_str = pin.get("time", "")
+            self.memories_listbox.insert(END, f"{idx+1}. {desc[:30]}... @ {time_str}")
+
+    def apply_filter(self):
+        keyword = self.filter_text.get().lower()
+        if keyword:
+            self.filtered_pins = [p for p in self.pins if keyword in p.get("description", "").lower()]
+        else:
+            self.filtered_pins = self.pins.copy()
+        self.update_memories_listbox()
+        self.refresh_markers()
+
+    def on_memory_select(self, event):
+        selection = event.widget.curselection()
+        if selection:
+            idx = selection[0]
+            pin = self.filtered_pins[idx]
+            self.open_pin_view(pin)
+
+    def refresh_pins(self):
+        new_pins = [p for p in load_pins() if "lat" in p and "lon" in p]
+        changes = self.detect_pin_changes(self.last_pins, new_pins)
+        self.pins = new_pins
+        self.last_pins = list(new_pins)
+        self.apply_filter()
+        if changes:
+            self.show_notification(changes)
+
+    def detect_pin_changes(self, old, new):
+        changes = []
+        old_map = {(p["lat"], p["lon"]): p for p in old}
+        new_map = {(p["lat"], p["lon"]): p for p in new}
+        for key in new_map:
+            if key not in old_map:
+                changes.append(f"memory at {key} added")
+            else:
+                old_pin = old_map[key]
+                new_pin = new_map[key]
+                if old_pin.get("time") != new_pin.get("time"):
+                    changes.append(f"memory at {key} time changed")
+                if old_pin.get("media") != new_pin.get("media"):
+                    changes.append(f"memory at {key} new mediafiles")
+        return changes
+
+    def show_notification(self, changes):
+        msg = "changed data: " + ", ".join(changes)
+        notif = Toplevel(self)
+        notif.overrideredirect(True)
+        notif.geometry(f"300x60+{self.master.winfo_x()+320}+{self.master.winfo_y()+40}")
+        Label(notif, text=msg, bg="yellow", wraplength=280).pack(fill=BOTH, expand=True)
+        def close():
+            time.sleep(2.5)
+            notif.destroy()
+        threading.Thread(target=close, daemon=True).start()
 
 if __name__ == "__main__":
     root = Tk()

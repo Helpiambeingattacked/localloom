@@ -1,26 +1,34 @@
 [
   {
-    "x": 123,
-    "y": 456,
-    "description": "My memory",
-    "media": "path/to/file.jpg",
-    "time": "2025-06-20T12:34:56",
-    "privacy": "public"
-  },
-  {
-    "x": 549,
-    "y": 779,
-    "description": "I shat myself",
-    "media": "C:/Users/yerik/Downloads/ball.jpg",
-    "time": "2025-06-20T15:29:39",
-    "privacy": "public"
-  },
-  {
     "lat": 36.148765496563314,
     "lon": 127.81258306515042,
     "description": "hi",
     "media": "",
     "time": "2025-06-20T15:42:58",
+    "privacy": "public"
+  },
+  {
+    "lat": 36.276875994259974,
+    "lon": 127.5104141235351,
+    "description": "hi",
+    "media": "",
+    "time": "2025-06-20T16:16:00",
+    "privacy": "public"
+  },
+  {
+    "lat": 36.04020093318189,
+    "lon": 127.48390817606793,
+    "description": "gih",
+    "media": "",
+    "time": "2025-06-20T16:20:44",
+    "privacy": "public"
+  },
+  {
+    "lat": 35.83439949750532,
+    "lon": 127.83051859990331,
+    "description": "ssa",
+    "media": [],
+    "time": "2025-06-20T16:31:08",
     "privacy": "public"
   }
 ]
