@@ -1,0 +1,26 @@
+[
+  {
+    "x": 123,
+    "y": 456,
+    "description": "My memory",
+    "media": "path/to/file.jpg",
+    "time": "2025-06-20T12:34:56",
+    "privacy": "public"
+  },
+  {
+    "x": 549,
+    "y": 779,
+    "description": "I shat myself",
+    "media": "C:/Users/yerik/Downloads/ball.jpg",
+    "time": "2025-06-20T15:29:39",
+    "privacy": "public"
+  },
+  {
+    "lat": 36.148765496563314,
+    "lon": 127.81258306515042,
+    "description": "hi",
+    "media": "",
+    "time": "2025-06-20T15:42:58",
+    "privacy": "public"
+  }
+]
